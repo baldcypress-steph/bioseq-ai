@@ -1,0 +1,214 @@
+[
+  {
+    "system": "keyword baseline (no LLM)",
+    "tool_recall": 0.9,
+    "extra_tools": 0.133,
+    "call_errors": 0,
+    "answer_has_facts": 0.783,
+    "faithful": 1.0,
+    "seconds": 0.0,
+    "tasks": [
+      {
+        "id": "gc-1",
+        "tool_recall": 1.0,
+        "extra_tools": 0,
+        "call_errors": 0,
+        "answer_has_facts": 1.0,
+        "faithful": 1.0,
+        "seconds": 0.0,
+        "tools_called": [
+          "analyze_sequence",
+          "analyze_sequence"
+        ]
+      },
+      {
+        "id": "len-1",
+        "tool_recall": 1.0,
+        "extra_tools": 0,
+        "call_errors": 0,
+        "answer_has_facts": 1.0,
+        "faithful": 1.0,
+        "seconds": 0.0,
+        "tools_called": [
+          "analyze_sequence",
+          "analyze_sequence"
+        ]
+      },
+      {
+        "id": "comp-1",
+        "tool_recall": 1.0,
+        "extra_tools": 0,
+        "call_errors": 0,
+        "answer_has_facts": 0.25,
+        "faithful": 1.0,
+        "seconds": 0.0,
+        "tools_called": [
+          "analyze_sequence",
+          "analyze_sequence"
+        ]
+      },
+      {
+        "id": "rc-1",
+        "tool_recall": 1.0,
+        "extra_tools": 0,
+        "call_errors": 0,
+        "answer_has_facts": 0.0,
+        "faithful": 1.0,
+        "seconds": 0.0,
+        "tools_called": [
+          "translate_sequence",
+          "translate_sequence"
+        ]
+      },
+      {
+        "id": "tx-1",
+        "tool_recall": 1.0,
+        "extra_tools": 0,
+        "call_errors": 0,
+        "answer_has_facts": 1.0,
+        "faithful": 1.0,
+        "seconds": 0.0,
+        "tools_called": [
+          "transcribe_sequence",
+          "transcribe_sequence"
+        ]
+      },
+      {
+        "id": "tl-1",
+        "tool_recall": 1.0,
+        "extra_tools": 0,
+        "call_errors": 0,
+        "answer_has_facts": 1.0,
+        "faithful": 1.0,
+        "seconds": 0.0,
+        "tools_called": [
+          "translate_sequence",
+          "translate_sequence"
+        ]
+      },
+      {
+        "id": "tl-2",
+        "tool_recall": 1.0,
+        "extra_tools": 0,
+        "call_errors": 0,
+        "answer_has_facts": 1.0,
+        "faithful": 1.0,
+        "seconds": 0.0,
+        "tools_called": [
+          "translate_sequence",
+          "translate_sequence"
+        ]
+      },
+      {
+        "id": "orf-1",
+        "tool_recall": 1.0,
+        "extra_tools": 0,
+        "call_errors": 0,
+        "answer_has_facts": 1.0,
+        "faithful": 1.0,
+        "seconds": 0.0,
+        "tools_called": [
+          "find_orfs",
+          "find_orfs"
+        ]
+      },
+      {
+        "id": "orf-2",
+        "tool_recall": 1.0,
+        "extra_tools": 0,
+        "call_errors": 0,
+        "answer_has_facts": 1.0,
+        "faithful": 1.0,
+        "seconds": 0.0,
+        "tools_called": [
+          "find_orfs",
+          "find_orfs"
+        ]
+      },
+      {
+        "id": "orf-3",
+        "tool_recall": 1.0,
+        "extra_tools": 1,
+        "call_errors": 0,
+        "answer_has_facts": 1.0,
+        "faithful": 1.0,
+        "seconds": 0.0,
+        "tools_called": [
+          "translate_sequence",
+          "find_orfs",
+          "translate_sequence",
+          "find_orfs"
+        ]
+      },
+      {
+        "id": "multi-1",
+        "tool_recall": 1.0,
+        "extra_tools": 0,
+        "call_errors": 0,
+        "answer_has_facts": 1.0,
+        "faithful": 1.0,
+        "seconds": 0.0,
+        "tools_called": [
+          "analyze_sequence",
+          "find_orfs",
+          "analyze_sequence",
+          "find_orfs"
+        ]
+      },
+      {
+        "id": "multi-2",
+        "tool_recall": 1.0,
+        "extra_tools": 0,
+        "call_errors": 0,
+        "answer_has_facts": 1.0,
+        "faithful": 1.0,
+        "seconds": 0.0,
+        "tools_called": [
+          "transcribe_sequence",
+          "translate_sequence",
+          "transcribe_sequence",
+          "translate_sequence"
+        ]
+      },
+      {
+        "id": "multi-3",
+        "tool_recall": 0.5,
+        "extra_tools": 0,
+        "call_errors": 0,
+        "answer_has_facts": 0.5,
+        "faithful": 1.0,
+        "seconds": 0.0,
+        "tools_called": [
+          "translate_sequence",
+          "translate_sequence"
+        ]
+      },
+      {
+        "id": "plain-1",
+        "tool_recall": 1.0,
+        "extra_tools": 0,
+        "call_errors": 0,
+        "answer_has_facts": 1.0,
+        "faithful": 1.0,
+        "seconds": 0.0,
+        "tools_called": [
+          "analyze_sequence",
+          "analyze_sequence"
+        ]
+      },
+      {
+        "id": "plain-2",
+        "tool_recall": 0.0,
+        "extra_tools": 1,
+        "call_errors": 0,
+        "answer_has_facts": 0.0,
+        "faithful": 1.0,
+        "seconds": 0.0,
+        "tools_called": [
+          "translate_sequence",
+          "translate_sequence"
+        ]
+      }
+    ]
+  }
+]
