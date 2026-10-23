@@ -184,7 +184,7 @@ bioseq-ai/
 ├── skills/bioseq-analysis/    Agent Skill package
 ├── benchmark/                 Tasks and benchmark runner
 ├── examples/sample.fasta
-└── tests/                     43 tests (tools, agent loop, faithfulness, skill)
+└── tests/                     45 tests (tools, agent loop, model client, faithfulness, skill)
 ```
 
 ## Limitations
