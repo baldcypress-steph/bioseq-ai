@@ -1,0 +1,25 @@
+# SITE_ADDRESS is ":80" (plain HTTP on the droplet's IP) or a domain name such as
+# bioseq.example.com, in which case Caddy obtains an HTTPS certificate automatically.
+{$SITE_ADDRESS} {
+	encode gzip
+
+	# Model API (OpenAI-compatible). Lets your laptop, the benchmark or another app
+	# use the hosted model. Requires the API key; everything else is refused.
+	@model_api path /v1/*
+	handle @model_api {
+		@authorized header Authorization "Bearer {$MODEL_API_KEY}"
+		handle @authorized {
+			reverse_proxy model:11434 {
+				transport http {
+					read_timeout 10m
+				}
+			}
+		}
+		respond "Unauthorized" 401
+	}
+
+	# Everything else is the BioSeq AI web app (Streamlit, including its websocket).
+	handle {
+		reverse_proxy app:8501
+	}
+}

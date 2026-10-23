@@ -1,0 +1,19 @@
+#cloud-config
+# Paste into "Add Initialization scripts (free)" -> "User data" when creating a droplet.
+# Edit the two lines marked EDIT first.
+package_update: true
+packages: [git, docker.io, docker-compose-v2]
+write_files:
+  - path: /etc/bioseq.env
+    permissions: "0600"
+    content: |
+      MODEL_API_KEY=EDIT-paste-output-of-openssl-rand-hex-32
+      SITE_ADDRESS=:80
+      BIOSEQ_MODEL=qwen3:1.7b
+      BIOSEQ_TIMEOUT=300
+runcmd:
+  - fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+  - echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  - git clone https://github.com/EDIT-your-username/bioseq-ai.git /opt/bioseq-ai
+  - cp /etc/bioseq.env /opt/bioseq-ai/.env
+  - cd /opt/bioseq-ai && docker compose up -d --build

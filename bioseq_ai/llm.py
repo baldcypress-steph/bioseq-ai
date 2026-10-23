@@ -20,7 +20,8 @@ class LLMConfig:
     base_url: str = field(default_factory=lambda: os.getenv("BIOSEQ_BASE_URL", "http://localhost:11434/v1"))
     api_key: str = field(default_factory=lambda: os.getenv("BIOSEQ_API_KEY", "ollama"))
     temperature: float = 0.0  # deterministic as possible, for reproducibility
-    timeout: float = 180.0  # seconds per model call; fail clearly instead of hanging
+    # Seconds per model call; fail clearly instead of hanging. CPU-only servers may need more.
+    timeout: float = field(default_factory=lambda: float(os.getenv("BIOSEQ_TIMEOUT", "180")))
     max_retries: int = 0  # silent retries would multiply waiting time on slow laptops
     # Qwen3 "thinks" at length before each tool call, which is slow on a laptop.
     # Its documented /no_think switch turns that off; set BIOSEQ_THINK=1 to keep it.

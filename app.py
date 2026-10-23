@@ -29,10 +29,15 @@ with st.sidebar:
                     index=1 if os.getenv("BIOSEQ_TOOLS_ONLY") else 0,
                     help="Tools-only uses a keyword planner instead of a model. Useful on CPU-only hosts.")
     cfg = LLMConfig()
-    cfg.model = st.text_input("Model", cfg.model, help="Any tool-calling model served by your backend.")
-    cfg.base_url = st.text_input("OpenAI-compatible endpoint", cfg.base_url)
+    if os.getenv("BIOSEQ_LOCK_ENDPOINT") == "1":
+        # Public deployments: visitors can't redirect the server to other URLs or models.
+        st.text_input("Model", cfg.model, disabled=True)
+        st.caption("Model endpoint is fixed by the server operator.")
+    else:
+        cfg.model = st.text_input("Model", cfg.model, help="Any tool-calling model served by your backend.")
+        cfg.base_url = st.text_input("OpenAI-compatible endpoint", cfg.base_url)
     max_steps = st.slider("Max agent steps", 1, 10, 6)
-    st.caption("Default: Qwen3 4B via Ollama on this computer. Nothing leaves your machine.")
+    st.caption("Runs an open-weight Qwen3 model on your own computer or your own server via Ollama.")
     st.divider()
     st.caption("Research and education tool. Not for clinical or diagnostic use.")
 
