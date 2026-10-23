@@ -12,6 +12,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -r requirements.txt
-      - run: pip install -e .
       - run: pytest -q
-      - run: python benchmark/run_benchmark.py   # keyword baseline; no LLM needed in CI
+      - run: python benchmark/run_benchmark.py
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t bioseq-app .
+      - run: cp deploy/env.example .env && docker compose config --quiet
