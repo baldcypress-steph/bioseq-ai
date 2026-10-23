@@ -29,22 +29,30 @@ def test_frontmatter_follows_agent_skills_spec():
 
 
 def test_vendored_tools_identical_to_package():
-    assert (SKILL / "scripts" / "bioseq_tools.py").read_text() == (ROOT / "bioseq_ai" / "tools.py").read_text(), \
-        "Run: python scripts/sync_skill.py"
+    assert (SKILL / "scripts" / "bioinformatics_tools.py").read_text() == \
+        (ROOT / "bioseq_ai" / "bioinformatics_tools.py").read_text(), "Run: python scripts/sync_skill.py"
 
 
 def run(*args):
-    p = subprocess.run([sys.executable, str(SKILL / "scripts" / "run.py"), *args], capture_output=True, text=True)
-    return p.returncode, json.loads(p.stdout)
+    p = subprocess.run([sys.executable, str(SKILL / "scripts" / "bioinformatics_tools.py"), *args],
+                       capture_output=True, text=True)
+    return p.returncode, p.stdout, p.stderr
 
 
 def test_skill_script_runs():
-    code, out = run("analyze", "--seq", "ATGAAATTTGGGTAA")
-    assert code == 0 and out["results"][0]["gc_content_percent"] == 26.67
-    code, out = run("orfs", str(ROOT / "examples" / "sample.fasta"))
-    assert code == 0 and out["results"][0]["orfs"][0]["protein_length_aa"] == 60
+    code, out, _ = run("--sequence", "ATGAAATTTGGGTAA", "--action", "analyze")
+    assert code == 0 and json.loads(out)["analysis"]["gc_percent"] == 26.67
+    code, out, _ = run("--fasta", str(ROOT / "examples" / "demo_construct.fasta"), "--action", "orfs",
+                       "--min-orf-length", "30")
+    assert code == 0 and max(o["length_aa"] for o in json.loads(out)["orfs"]) == 60
 
 
-def test_skill_script_reports_errors_as_json():
-    code, out = run("analyze", "--seq", "ACXT")
-    assert code == 1 and "position 3" in out["error"]
+def test_skill_script_reports_errors():
+    code, _, err = run("--sequence", "ACXT")
+    assert code == 2 and "Invalid DNA character(s): X" in err
+
+
+def test_skill_md_commands_match_script_options():
+    _, text = frontmatter()
+    for flag in re.findall(r"(?<![-\w])(--[a-z][a-z-]*)", text):
+        assert flag in (SKILL / "scripts" / "bioinformatics_tools.py").read_text(), flag

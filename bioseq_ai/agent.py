@@ -112,7 +112,9 @@ class Agent:
         self.model = model
         self.max_steps = max_steps
 
-    def run(self, question: str, fasta_text: str) -> AgentResult:
+    def run(self, question: str, fasta_text: str, on_event=None) -> AgentResult:
+        """on_event(message: str) is called as the run progresses, for live progress display."""
+        say = on_event or (lambda msg: None)
         t0 = time.time()
         store = SequenceStore.from_text(fasta_text)
         seq_lines = "\n".join(
@@ -128,7 +130,11 @@ class Agent:
         answer, reason = "", "max_steps"
 
         for step in range(1, self.max_steps + 1):
+            say(f"Step {step}: asking {self.model.name} what to do next…")
+            ts_model = time.time()
             reply = self.model.chat(messages, schemas)
+            say(f"Step {step}: model replied in {time.time() - ts_model:.1f}s"
+                + (f" and requested {', '.join(c.name for c in reply.tool_calls)}" if reply.tool_calls else " with its answer"))
             if not reply.tool_calls:
                 answer, reason = reply.content, "answered"
                 break
@@ -157,9 +163,12 @@ class Agent:
                     except ToolError as exc:
                         out = {"error": str(exc)}
                         trace.append(TraceStep(step, call.name, args, False, error=str(exc), seconds=time.time() - ts))
+                last = trace[-1]
+                say(f"Step {step}: ran {last.tool} → {'ok' if last.ok else 'error: ' + str(last.error)}")
                 messages.append({"role": "tool", "tool_call_id": call.id, "content": json.dumps(out)})
         else:
             # Step limit reached: ask once more for an answer with tools disabled.
+            say("Step limit reached; asking the model for a final answer…")
             reply = self.model.chat(messages + [{
                 "role": "user",
                 "content": "Tool budget reached. Answer now using only the tool results above.",
@@ -181,9 +190,9 @@ class Agent:
 # Tools-only mode: no LLM. Used for CPU-only hosted demos and as a baseline.
 # --------------------------------------------------------------------------- #
 _KEYWORDS = {
-    "analyze_sequence": r"\b(gc|at content|composition|length|analy[sz]e|stats?|statistics|reverse complement|count)",
+    "analyze_sequence": r"\b(gc|at content|composition|length|analy[sz]e|stats?|statistics|count)",
     "transcribe_sequence": r"\b(transcri|mrna|rna)",
-    "translate_sequence": r"\b(translat|protein|amino|peptide|codon)",
+    "translate_sequence": r"\b(translat|protein|amino|peptide|codon|reverse strand|frame -)",
     "find_orfs": r"\b(orfs?|open reading|reading frames?|genes?|coding region|cds)\b",
 }
 
@@ -221,17 +230,20 @@ def run_tools_only(question: str, fasta_text: str) -> AgentResult:
 def _summarize(name: str, o: dict) -> str:
     sid = o["sequence_id"]
     if name == "analyze_sequence":
-        return f"**{sid}**: {o['length']} nt {o['molecule_type']}, GC content {o['gc_content_percent']}%"
+        gc = "unknown (only N bases)" if o["gc_percent"] is None else f"{o['gc_percent']}%"
+        return f"**{sid}**: {o['length']} nt, GC content {gc}"
     if name == "transcribe_sequence":
-        return f"**{sid}** mRNA ({o['rna_length']} nt): `{o['rna']['value'][:60]}{'...' if o['rna_length'] > 60 else ''}`"
+        r = o["rna"]["value"]
+        return f"**{sid}** RNA ({o['rna_length']} nt): `{r[:60]}{'...' if o['rna_length'] > 60 else ''}`"
     if name == "translate_sequence":
         p = o["protein"]["value"]
-        return f"**{sid}** frame {o['frame']}{o['strand']}: {o['protein_length']} aa, {o['stop_codon_count']} stop codon(s): `{p[:60]}{'...' if len(p) > 60 else ''}`"
+        return (f"**{sid}** frame {o['frame']:+d}: {o['protein_length']} aa, {o['stop_codon_count']} stop codon(s): "
+                f"`{p[:60]}{'...' if len(p) > 60 else ''}`")
     if name == "find_orfs":
         if not o["orf_count"]:
-            return f"**{sid}**: no ORFs of at least {o['min_protein_length_aa']} aa"
-        best = o["orfs"][0]
-        return (f"**{sid}**: {o['orf_count']} candidate ORF(s); longest is {best['protein_length_aa']} aa on strand "
+            return f"**{sid}**: no ORFs of at least {o['min_aa_length']} aa"
+        best = o["orfs_longest_first"][0]
+        return (f"**{sid}**: {o['orf_count']} candidate ORF(s); longest is {best['length_aa']} aa on strand "
                 f"{best['strand']} ({best['start']}-{best['end']})")
     return f"{name}: done"
 

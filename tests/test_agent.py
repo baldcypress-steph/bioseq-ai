@@ -35,7 +35,7 @@ def test_agent_calls_tool_then_answers():
     res = Agent(model).run("What is the GC content?", TOY)
     assert res.stopped_reason == "answered"
     assert [t.tool for t in res.trace] == ["analyze_sequence"]
-    assert res.trace[0].output["gc_content_percent"] == 26.67
+    assert res.trace[0].output["gc_percent"] == 26.67
     assert res.faithfulness["passed"] is True
     # The model was offered all four tools, with sequence_id restricted to loaded IDs.
     tools = model.seen[0][1]
@@ -95,7 +95,7 @@ def test_step_limit_forces_final_answer():
 def test_multiple_tool_calls_in_one_turn():
     reply = ModelReply("", [
         ToolCall("a", "analyze_sequence", '{"sequence_id": "demo_construct"}'),
-        ToolCall("b", "find_orfs", '{"sequence_id": "demo_construct", "min_protein_length": 30}'),
+        ToolCall("b", "find_orfs", '{"sequence_id": "demo_construct", "min_aa_length": 30}'),
     ])
     model = FakeModel([reply, ModelReply("done", [])])
     res = Agent(model).run("GC and ORFs", SAMPLE)

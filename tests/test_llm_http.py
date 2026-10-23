@@ -70,3 +70,17 @@ def test_text_tool_calls_over_http(server):
     ]
     res = Agent(OpenAICompatibleLLM(LLMConfig(model="mock", base_url=server))).run("GC?", TOY)
     assert res.trace[0].ok and res.faithfulness["passed"]
+
+
+def test_qwen3_gets_no_think_switch_and_progress_is_reported(server):
+    Handler.replies = [
+        {"content": None, "tool_calls": [{"id": "c", "type": "function", "function": {
+            "name": "analyze_sequence", "arguments": '{"sequence_id": "toy"}'}}]},
+        {"content": "GC content is 26.67%."},
+    ]
+    events = []
+    llm = OpenAICompatibleLLM(LLMConfig(model="qwen3:4b", base_url=server, disable_thinking=True))
+    Agent(llm).run("GC?", TOY, on_event=events.append)
+    assert Handler.requests[0]["messages"][0]["content"].endswith("/no_think")
+    assert any("ran analyze_sequence" in e for e in events) and any("with its answer" in e for e in events)
+    assert llm.client.max_retries == 0

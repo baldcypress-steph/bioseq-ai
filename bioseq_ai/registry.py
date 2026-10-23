@@ -12,8 +12,87 @@ import inspect
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from . import tools
-from .tools import SequenceError, parse_fasta
+from . import bioinformatics_tools as bt
+
+
+class SequenceError(ValueError):
+    """Raised when input text is not a usable FASTA file or sequence."""
+
+
+def parse_fasta(text: str) -> list[dict]:
+    """Parse FASTA text (one or more records, or a bare sequence) into [{"id", "description", "sequence"}].
+
+    The app accepts multi-record files; each record is then analyzed with the
+    single-sequence functions in bioinformatics_tools. Whitespace and digits
+    (GenBank-style numbering) are removed; validation happens in the tools.
+    """
+    if not text or not text.strip():
+        raise SequenceError("No sequence provided.")
+    records: list[dict] = []
+    header, chunks = None, []
+
+    def flush():
+        if header is None and not chunks:
+            return
+        rid, _, desc = (header if header is not None else f"seq{len(records) + 1}").partition(" ")
+        records.append({"id": rid or f"seq{len(records) + 1}", "description": desc.strip(), "sequence": "".join(chunks)})
+
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith(";"):
+            continue
+        if line.startswith(">"):
+            flush()
+            header, chunks = line[1:].strip(), []
+        else:
+            chunks.append("".join(ch for ch in line if not ch.isspace() and not ch.isdigit()))
+    flush()
+    records = [r for r in records if r["sequence"]]
+    if not records:
+        raise SequenceError("FASTA contained headers but no sequence data.")
+    return records
+
+
+# Long strings are shortened in what the model sees, so a small model's context isn't flooded.
+PREVIEW_LIMIT = 300
+
+
+def _preview(s: str) -> dict:
+    if len(s) <= PREVIEW_LIMIT:
+        return {"value": s, "truncated": False}
+    return {"value": s[:PREVIEW_LIMIT] + "...", "truncated": True, "full_length": len(s)}
+
+
+# ---- Adapters: call the bioinformatics_tools functions unchanged and label their results. ---- #
+def analyze(sequence: str) -> dict:
+    return bt.analyze_sequence(sequence)
+
+
+def transcribe(sequence: str) -> dict:
+    rna = bt.transcribe_sequence(sequence)
+    return {"rna_length": len(rna), "rna": _preview(rna),
+            "note": "Input treated as the coding (sense) strand, 5'->3'."}
+
+
+def translate(sequence: str, frame: int = 1, to_stop: bool = False) -> dict:
+    protein = bt.translate_sequence(sequence, frame, to_stop=bool(to_stop))
+    return {"frame": frame, "protein": _preview(protein), "protein_length": len(protein),
+            "stop_codon_count": protein.count("*"), "genetic_code": 1,
+            "note": "'*' marks a stop codon; frames -1..-3 read the reverse complement."}
+
+
+MAX_ORFS_SHOWN = 10
+
+
+def orfs(sequence: str, min_aa_length: int = 30) -> dict:
+    found = bt.find_orfs(sequence, min_aa_length=min_aa_length)
+    longest = sorted(found, key=lambda o: (-o["length_aa"], o["start"]))
+    shown = [{**o, "protein_sequence": _preview(o["protein_sequence"])} for o in longest[:MAX_ORFS_SHOWN]]
+    return {"min_aa_length": min_aa_length, "orf_count": len(found),
+            "longest_orf_aa": longest[0]["length_aa"] if longest else 0,
+            "orfs_longest_first": shown, "orfs_truncated": len(found) > MAX_ORFS_SHOWN,
+            "note": "Coordinates are 1-based inclusive on the input sequence. Every in-frame ATG is a separate "
+                    "candidate, so nested ORFs share a stop codon. Candidates only, not evidence of expression."}
 
 
 class ToolError(Exception):
@@ -79,39 +158,33 @@ TOOLS: dict[str, Tool] = {
     for t in [
         Tool(
             "analyze_sequence",
-            tools.analyze_sequence,
-            "Length, base counts and percentages, GC content (%), AT content (%) and reverse complement "
-            "of a DNA or RNA sequence.",
+            analyze,
+            "Length, nucleotide composition (A, C, G, T, N counts) and GC percentage of a DNA sequence.",
             {},
         ),
         Tool(
             "transcribe_sequence",
-            tools.transcribe_sequence,
-            "Transcribe a DNA coding strand into mRNA (T becomes U).",
+            transcribe,
+            "Transcribe a DNA coding strand into RNA (T becomes U).",
             {},
         ),
         Tool(
             "translate_sequence",
-            tools.translate_sequence,
-            "Translate one reading frame of DNA/RNA into a protein sequence using an NCBI codon table.",
+            translate,
+            "Translate DNA into protein in one of six reading frames (standard genetic code).",
             {
-                "frame": {"type": "integer", "enum": [1, 2, 3], "description": "Reading frame, default 1."},
-                "strand": {"type": "string", "enum": ["+", "-"], "description": "Strand, default '+'."},
-                "table": {"type": "integer", "description": "NCBI genetic code ID, default 1 (standard)."},
-                "to_stop": {"type": "boolean", "description": "Stop at the first stop codon, default false."},
+                "frame": {"type": "integer", "enum": [1, 2, 3, -1, -2, -3],
+                          "description": "Reading frame: 1-3 forward, -1 to -3 reverse complement. Default 1."},
+                "to_stop": {"type": "boolean", "description": "Stop at the first stop codon. Default false."},
             },
         ),
         Tool(
             "find_orfs",
-            tools.find_orfs,
+            orfs,
             "Find candidate open reading frames (ATG to stop codon) in all six frames, longest first.",
             {
-                "min_protein_length": {
-                    "type": "integer",
-                    "description": "Minimum ORF length in amino acids, default 30.",
-                },
-                "table": {"type": "integer", "description": "NCBI genetic code ID, default 1."},
-                "both_strands": {"type": "boolean", "description": "Search the reverse strand too, default true."},
+                "min_aa_length": {"type": "integer",
+                                  "description": "Minimum ORF length in amino acids, excluding the stop. Default 30."},
             },
         ),
     ]
@@ -144,6 +217,6 @@ def run_tool(name: str, arguments: dict[str, Any], store: SequenceStore) -> dict
         raise ToolError(f"Unexpected argument(s) for {name}: {sorted(unknown)}. Allowed: {sorted(allowed)}.")
     try:
         result = tool.func(sequence, **args)
-    except SequenceError as exc:
+    except (ValueError, TypeError) as exc:  # the tools raise ValueError for bad input
         raise ToolError(str(exc)) from exc
     return {"sequence_id": seq_id, **result}

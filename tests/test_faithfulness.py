@@ -1,6 +1,6 @@
 from bioseq_ai.faithfulness import check_answer
 
-OUT = [{"gc_content_percent": 52.38, "length": 1234, "orfs": [{"start": 46, "end": 228, "protein": {"value": "MKFGAAVLLWERT"}}]}]
+OUT = [{"gc_percent": 52.38, "length": 1234, "orfs": [{"start": 46, "end": 228, "protein": {"value": "MKFGAAVLLWERT"}}]}]
 
 
 def test_rounding_to_stated_precision_is_supported():

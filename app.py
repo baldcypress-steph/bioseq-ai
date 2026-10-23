@@ -11,15 +11,14 @@ import streamlit as st
 
 from bioseq_ai.agent import Agent, run_tools_only
 from bioseq_ai.llm import LLMConfig, OpenAICompatibleLLM
-from bioseq_ai.registry import SequenceStore
-from bioseq_ai.tools import SequenceError
+from bioseq_ai.registry import SequenceError, SequenceStore
 
 st.set_page_config(page_title="BioSeq AI", page_icon="🧬", layout="wide")
 SAMPLE = (Path(__file__).parent / "examples" / "sample.fasta").read_text()
 EXAMPLES = [
     "What is the GC content and length of each sequence?",
     "Analyze demo_construct: GC content, transcribe it, and find open reading frames of at least 30 amino acids.",
-    "Translate toy in all three forward frames. Which frame has no premature stop codon?",
+    "Translate toy in frames 1, 2 and 3. Which frame gives a protein that starts with M?",
     "Find the longest ORF in demo_construct and give me its protein sequence.",
 ]
 
@@ -59,15 +58,20 @@ pick = st.selectbox("Example questions", ["(write my own)"] + EXAMPLES)
 question = st.text_input("Your question", "" if pick == "(write my own)" else pick)
 
 if st.button("Run analysis", type="primary", disabled=not question.strip()):
-    with st.spinner("Thinking and calling tools…"):
+    with st.status("Running…", expanded=True) as status:
         try:
             if mode.startswith("Tools"):
                 res = run_tools_only(question, fasta)
             else:
-                res = Agent(OpenAICompatibleLLM(cfg), max_steps=max_steps).run(question, fasta)
+                st.write(f"The first request can take a minute while {cfg.model} loads into memory.")
+                res = Agent(OpenAICompatibleLLM(cfg), max_steps=max_steps).run(question, fasta, on_event=st.write)
+            status.update(label=f"Done in {res.seconds}s", state="complete", expanded=False)
         except Exception as exc:
-            st.error(f"Could not reach the model at {cfg.base_url}: {exc}\n\n"
-                     f"Start Ollama and pull the model (`ollama pull {cfg.model}`), or switch to Tools-only mode.")
+            status.update(label="Failed", state="error")
+            st.error(f"Problem talking to the model at {cfg.base_url}: {exc}\n\n"
+                     f"If it timed out, your computer may be too slow for {cfg.model}: try a smaller model "
+                     "such as `qwen3:1.7b` (`ollama pull qwen3:1.7b`), or switch to Tools-only mode. "
+                     f"If it could not connect, open the Ollama app and check `ollama pull {cfg.model}` finished.")
             st.stop()
     st.session_state["res"] = res
 
@@ -96,8 +100,9 @@ if res:
         icon = "✅" if t.ok else "⚠️"
         with st.expander(f"{icon} Step {t.step}: `{t.tool}({json.dumps(t.arguments)})`"):
             if t.ok:
-                if t.tool == "find_orfs" and t.output["orfs"]:
-                    st.dataframe(pd.DataFrame([{**o, "protein": o["protein"]["value"]} for o in t.output["orfs"]]),
+                if t.tool == "find_orfs" and t.output["orfs_longest_first"]:
+                    st.dataframe(pd.DataFrame([{**o, "protein_sequence": o["protein_sequence"]["value"]}
+                                               for o in t.output["orfs_longest_first"]]),
                                  hide_index=True, width="stretch")
                 st.json(t.output, expanded=False)
             else:

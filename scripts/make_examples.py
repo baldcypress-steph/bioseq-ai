@@ -29,6 +29,10 @@ demo = noise(45) + fwd + noise(30) + str(Seq(rev).reverse_complement()) + noise(
 
 out = Path(__file__).resolve().parents[1] / "examples"
 out.mkdir(exist_ok=True)
+(out / "demo_construct.fasta").write_text(
+    ">demo_construct synthetic construct with one forward and one reverse-strand ORF\n"
+    + "\n".join(demo[i:i + 70] for i in range(0, len(demo), 70)) + "\n"
+)
 (out / "sample.fasta").write_text(
     ">demo_construct synthetic construct with one forward and one reverse-strand ORF\n"
     + "\n".join(demo[i:i + 70] for i in range(0, len(demo), 70)) + "\n"

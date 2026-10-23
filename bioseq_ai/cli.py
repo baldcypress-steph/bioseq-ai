@@ -58,9 +58,11 @@ def main(argv: list[str] | None = None) -> int:
         if a.base_url:
             cfg.base_url = a.base_url
         try:
-            res = Agent(OpenAICompatibleLLM(cfg), max_steps=a.max_steps).run(a.question, fasta)
+            print(f"Using {cfg.model} at {cfg.base_url} (first request may take a minute to load the model)")
+            res = Agent(OpenAICompatibleLLM(cfg), max_steps=a.max_steps).run(
+                a.question, fasta, on_event=lambda m: print('  ' + m, flush=True))
         except Exception as exc:  # connection errors etc.
-            print(f"Could not reach the model at {cfg.base_url} ({exc}).\n"
+            print(f"Problem talking to the model at {cfg.base_url} ({exc}).\n"
                   f"Is Ollama running? Try: ollama serve  and  ollama pull {cfg.model}\n"
                   "Or run with --tools-only.", file=sys.stderr)
             return 2
